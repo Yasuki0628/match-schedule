@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>試合タイムスケジュール</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2E5D54">
+<link rel="icon" href="icons/favicon.png" type="image/png">
+
+<!-- iOS home screen support -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="試合ｽｹｼﾞｭｰﾙ">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F1EC;
+    --panel:#FFFFFF;
+    --ink:#20242B;
+    --ink-soft:#5B6270;
+    --line:#DAD6CB;
+    --line-strong:#B7B2A3;
+    --accent:#2E5D54;
+    --accent-soft:#DCE8E4;
+    --interval-bg:#EFEBE0;
+    --interval-line:#C9A24A;
+    --danger:#B4483C;
+    --radius:10px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;font-family:'Zen Kaku Gothic New', sans-serif;
+    background:var(--paper);color:var(--ink);min-height:100vh;
+    padding:calc(24px + env(safe-area-inset-top)) 14px calc(60px + env(safe-area-inset-bottom));
+  }
+  .app{max-width:640px;margin:0 auto;}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+
+  h1.page-title{font-size:19px;font-weight:700;margin:0 0 4px;}
+  .page-sub{font-size:12px;color:var(--ink-soft);margin:0 0 20px;}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
+  .card h2{font-size:13px;font-weight:700;margin:0 0 12px;color:var(--ink-soft);letter-spacing:.02em;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .field{margin-bottom:10px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:block;font-size:11px;color:var(--ink-soft);margin-bottom:4px;}
+  input[type=text],input[type=date],input[type=time],input[type=number],select{
+    width:100%;border:1px solid var(--line-strong);border-radius:6px;padding:7px 9px;
+    font-size:13.5px;font-family:inherit;background:var(--paper);color:var(--ink);
+  }
+  input[type=time],input[type=number]{font-family:'Roboto Mono',monospace;}
+
+  .block{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;background:var(--panel);}
+  .block.interval{background:var(--interval-bg);}
+  .block-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 12px;border-bottom:1px solid var(--line);
+  }
+  .block.interval .block-head{border-bottom-color:var(--interval-line);}
+  .order-badge{
+    font-family:'Roboto Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);
+    background:var(--accent-soft);padding:3px 9px;border-radius:20px;
+  }
+  .block.interval .order-badge{color:#8A6A1E;background:#F1E4BF;}
+  .block-actions{display:flex;gap:4px;}
+  .icon-btn{
+    width:30px;height:30px;border:1px solid var(--line-strong);border-radius:6px;background:var(--panel);
+    color:var(--ink-soft);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;
+  }
+  .icon-btn:hover{background:var(--accent-soft);color:var(--accent);}
+  .icon-btn.del:hover{background:#F4E1DE;color:var(--danger);border-color:var(--danger);}
+  .block-body{padding:12px;}
+
+  .vs-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .vs-row .field{flex:1;margin-bottom:0;}
+  .vs-label{font-family:'Roboto Mono',monospace;font-size:11px;color:var(--ink-soft);padding-top:14px;}
+
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .time-computed{
+    font-family:'Roboto Mono',monospace;font-size:15px;font-weight:700;color:var(--ink);
+    background:var(--paper);border:1px dashed var(--line-strong);border-radius:6px;
+    padding:7px 9px;text-align:center;
+  }
+  .reset-link{font-size:10px;color:var(--ink-soft);text-align:center;margin-top:3px;cursor:pointer;text-decoration:underline;}
+
+  .add-row{display:flex;gap:10px;margin:16px 0;}
+  .add-row button{
+    flex:1;border:1.5px dashed var(--line-strong);background:transparent;border-radius:8px;
+    padding:12px 0;font-size:13px;color:var(--ink-soft);cursor:pointer;font-family:inherit;font-weight:500;
+  }
+  .add-row button:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+
+  .summary{display:flex;gap:10px;}
+  .summary .item{flex:1;background:var(--paper);border-radius:8px;padding:10px;text-align:center;}
+  .summary .item .n{font-family:'Roboto Mono',monospace;font-size:17px;font-weight:700;}
+  .summary .item .l{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+
+  textarea#lineText{
+    width:100%;min-height:220px;border:1px solid var(--line-strong);border-radius:6px;
+    padding:10px;font-family:'Roboto Mono',monospace;font-size:12.5px;line-height:1.6;
+    background:var(--paper);color:var(--ink);resize:vertical;
+  }
+  .export-actions{display:flex;gap:10px;margin-top:12px;}
+  button.primary{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 16px;font-size:13.5px;cursor:pointer;font-family:inherit;flex:1;font-weight:500;}
+  button.primary:hover{background:#254c44;}
+  button.ghost{background:none;border:1px solid var(--line-strong);border-radius:8px;padding:11px 16px;font-size:13.5px;cursor:pointer;font-family:inherit;color:var(--ink);flex:1;}
+  button.ghost:hover{background:var(--accent-soft);}
+  .copied-note{font-size:11px;color:var(--accent);text-align:center;margin-top:6px;height:14px;}
+  .status{font-family:'Roboto Mono',monospace;font-size:11px;color:var(--ink-soft);text-align:center;margin-top:6px;height:14px;}
+
+  .install-banner{
+    display:none;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius);
+    padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:var(--ink);
+  }
+  .install-banner button{
+    background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 14px;
+    font-size:12.5px;cursor:pointer;font-family:inherit;white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1 class="page-title sr-only">試合の日程・チーム・時間を入力すると終了時刻を自動計算し、LINE送信用テキストを作成できるアプリ</h1>
+  <h1 class="page-title" aria-hidden="true">試合タイムスケジュール</h1>
+  <p class="page-sub">開始時刻と試合時間を入れると、終了時刻・次の試合の開始時刻を自動で計算します。</p>
+
+  <div class="install-banner" id="installBanner">
+    <span>ホーム画面に追加して、アプリのように使えます。</span>
+    <button id="installBtn">追加する</button>
+  </div>
+
+  <div class="card">
+    <h2>大会情報</h2>
+    <div class="grid2">
+      <div class="field"><label for="fDate">日付</label><input type="date" id="fDate"></div>
+      <div class="field"><label for="fStart">1試合目 開始時刻</label><input type="time" id="fStart"></div>
+      <div class="field"><label for="fVenue">試合会場</label><input type="text" id="fVenue" placeholder="例: 中央球場"></div>
+      <div class="field"><label for="fStaff">会場担当</label><input type="text" id="fStaff" placeholder="例: 山田"></div>
+    </div>
+  </div>
+
+  <div id="blockList"></div>
+
+  <div class="add-row">
+    <button id="addMatch">＋ 試合を追加</button>
+    <button id="addInterval">＋ インターバルを追加</button>
+  </div>
+
+  <div class="card">
+    <h2>サマリー</h2>
+    <div class="summary">
+      <div class="item"><div class="n" id="sumCount">0</div><div class="l">試合数</div></div>
+      <div class="item"><div class="n" id="sumStart">--:--</div><div class="l">開始</div></div>
+      <div class="item"><div class="n" id="sumEnd">--:--</div><div class="l">終了</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>LINE送信用テキスト</h2>
+    <textarea id="lineText" readonly></textarea>
+    <div class="export-actions">
+      <button class="ghost" id="copyBtn">コピー</button>
+      <button class="primary" id="lineBtn">LINEで送信</button>
+    </div>
+    <div class="copied-note" id="copiedNote"></div>
+  </div>
+
+  <div class="status" id="statusLine"></div>
+</div>
+
+<script>
+(function(){
+  const blockList = document.getElementById('blockList');
+  const fDate = document.getElementById('fDate');
+  const fStart = document.getElementById('fStart');
+  const fVenue = document.getElementById('fVenue');
+  const fStaff = document.getElementById('fStaff');
+  const statusLine = document.getElementById('statusLine');
+
+  let blocks = [];
+  const STORAGE_KEY = 'match-schedule-state';
+
+  function uid(){ return 'b'+Date.now()+Math.random().toString(36).slice(2,6); }
+
+  function defaultState(){
+    const today = new Date();
+    const ymd = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+    return {
+      date: ymd, start: '08:30', venue: '', staff: '',
+      blocks: [
+        {id:uid(), type:'match', team1:'', team2:'', firstAttack:'', duration:100, manualStart:null, notes:''},
+        {id:uid(), type:'interval', duration:20, manualStart:null},
+        {id:uid(), type:'match', team1:'', team2:'', firstAttack:'', duration:100, manualStart:null, notes:''}
+      ]
+    };
+  }
+
+  function minutesToStr(mins){
+    mins = ((mins % 1440) + 1440) % 1440;
+    const h = Math.floor(mins/60), m = mins%60;
+    return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+  }
+  function strToMinutes(s){
+    if(!s) return 0;
+    const [h,m] = s.split(':').map(Number);
+    return h*60+m;
+  }
+
+  function recalcTimes(){
+    let cursor = strToMinutes(fStart.value || '08:30');
+    let matchCount = 0;
+    return blocks.map(b=>{
+      const start = b.manualStart ? strToMinutes(b.manualStart) : cursor;
+      const dur = Number(b.duration) > 0 ? Number(b.duration) : 0;
+      const end = start + dur;
+      cursor = end;
+      let label = '';
+      if(b.type==='match'){ matchCount++; label = '第'+matchCount+'試合'; }
+      else{ label = 'インターバル'; }
+      return {...b, computedStart:start, computedEnd:end, label, matchNumber:matchCount};
+    });
+  }
+
+  function render(){
+    const calced = recalcTimes();
+    blockList.innerHTML = '';
+
+    calced.forEach((b, idx)=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'block'+(b.type==='interval' ? ' interval':'');
+
+      const head = document.createElement('div');
+      head.className = 'block-head';
+      head.innerHTML =
+        '<span class="order-badge">'+b.label+'</span>'+
+        '<div class="block-actions">'+
+          '<button class="icon-btn" data-act="up" aria-label="上へ移動">↑</button>'+
+          '<button class="icon-btn" data-act="down" aria-label="下へ移動">↓</button>'+
+          '<button class="icon-btn del" data-act="del" aria-label="削除">✕</button>'+
+        '</div>';
+      wrap.appendChild(head);
+
+      const body = document.createElement('div');
+      body.className = 'block-body';
+
+      if(b.type==='match'){
+        body.innerHTML =
+          '<div class="vs-row">'+
+            '<div class="field"><label>チームA</label><input type="text" data-field="team1" value="'+escapeAttr(b.team1)+'" placeholder="チームA"></div>'+
+            '<div class="vs-label">vs</div>'+
+            '<div class="field"><label>チームB</label><input type="text" data-field="team2" value="'+escapeAttr(b.team2)+'" placeholder="チームB"></div>'+
+          '</div>'+
+          '<div class="field"><label>先攻</label><select data-field="firstAttack">'+
+            '<option value="">未定</option>'+
+            '<option value="team1"'+(b.firstAttack==='team1'?' selected':'')+'>'+(b.team1||'チームA')+'</option>'+
+            '<option value="team2"'+(b.firstAttack==='team2'?' selected':'')+'>'+(b.team2||'チームB')+'</option>'+
+          '</select></div>'+
+          '<div class="row3">'+
+            '<div class="field"><label>試合時間（分）</label><input type="number" min="1" data-field="duration" value="'+b.duration+'"></div>'+
+            '<div class="field"><label>開始</label><input type="time" data-field="manualStart" value="'+minutesToStr(b.computedStart)+'"></div>'+
+            '<div class="field"><label>終了</label><div class="time-computed">'+minutesToStr(b.computedEnd)+'</div></div>'+
+          '</div>'+
+          (b.manualStart ? '<div class="reset-link" data-act="resetstart">開始時刻を自動計算に戻す</div>' : '')+
+          '<div class="field"><label>備考</label><input type="text" data-field="notes" value="'+escapeAttr(b.notes||'')+'" placeholder="例: 雨天時は順延"></div>';
+      }else{
+        body.innerHTML =
+          '<div class="row3">'+
+            '<div class="field"><label>時間（分）</label><input type="number" min="1" data-field="duration" value="'+b.duration+'"></div>'+
+            '<div class="field"><label>開始</label><input type="time" data-field="manualStart" value="'+minutesToStr(b.computedStart)+'"></div>'+
+            '<div class="field"><label>終了</label><div class="time-computed">'+minutesToStr(b.computedEnd)+'</div></div>'+
+          '</div>'+
+          (b.manualStart ? '<div class="reset-link" data-act="resetstart">開始時刻を自動計算に戻す</div>' : '');
+      }
+      wrap.appendChild(body);
+      blockList.appendChild(wrap);
+
+      head.querySelectorAll('[data-act]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const act = btn.dataset.act;
+          if(act==='del'){ blocks = blocks.filter(x=>x.id!==b.id); }
+          if(act==='up' && idx>0){ [blocks[idx-1], blocks[idx]] = [blocks[idx], blocks[idx-1]]; }
+          if(act==='down' && idx<blocks.length-1){ [blocks[idx+1], blocks[idx]] = [blocks[idx], blocks[idx+1]]; }
+          persistAndRender();
+        });
+      });
+      body.querySelectorAll('[data-field]').forEach(el=>{
+        el.addEventListener('input', ()=>{
+          const orig = blocks.find(x=>x.id===b.id);
+          const field = el.dataset.field;
+          if(field==='manualStart'){
+            orig.manualStart = el.value || null;
+          }else if(field==='duration'){
+            orig.duration = el.value;
+          }else{
+            orig[field] = el.value;
+          }
+          persistAndRender();
+        });
+      });
+      const resetEl = body.querySelector('[data-act="resetstart"]');
+      if(resetEl){
+        resetEl.addEventListener('click', ()=>{
+          const orig = blocks.find(x=>x.id===b.id);
+          orig.manualStart = null;
+          persistAndRender();
+        });
+      }
+    });
+
+    const matchBlocks = calced.filter(b=>b.type==='match');
+    document.getElementById('sumCount').textContent = matchBlocks.length;
+    document.getElementById('sumStart').textContent = calced.length ? minutesToStr(calced[0].computedStart) : '--:--';
+    document.getElementById('sumEnd').textContent = calced.length ? minutesToStr(calced[calced.length-1].computedEnd) : '--:--';
+
+    document.getElementById('lineText').value = buildLineText(calced);
+  }
+
+  function escapeAttr(s){
+    const d = document.createElement('div');
+    d.textContent = s==null ? '' : s;
+    return d.innerHTML.replace(/"/g,'&quot;');
+  }
+
+  function buildLineText(calced){
+    const dateObj = fDate.value ? new Date(fDate.value+'T00:00:00') : null;
+    const dateStr = dateObj ? (dateObj.getFullYear()+'年'+(dateObj.getMonth()+1)+'月'+dateObj.getDate()+'日') : '';
+    let lines = [];
+    lines.push('【タイムスケジュール】');
+    if(dateStr) lines.push('日付: '+dateStr);
+    if(fVenue.value) lines.push('会場: '+fVenue.value);
+    if(fStaff.value) lines.push('会場担当: '+fStaff.value);
+    lines.push('');
+    calced.forEach(b=>{
+      const timeRange = minutesToStr(b.computedStart)+'〜'+minutesToStr(b.computedEnd);
+      if(b.type==='match'){
+        lines.push(b.label+' '+timeRange+'（'+b.duration+'分）');
+        const t1 = b.team1 || 'チームA';
+        const t2 = b.team2 || 'チームB';
+        lines.push(t1+' vs '+t2);
+        if(b.firstAttack==='team1') lines.push('先攻: '+t1+' / 後攻: '+t2);
+        else if(b.firstAttack==='team2') lines.push('先攻: '+t2+' / 後攻: '+t1);
+        if(b.notes) lines.push('備考: '+b.notes);
+      }else{
+        lines.push(b.label+' '+timeRange+'（'+b.duration+'分）');
+      }
+      lines.push('');
+    });
+    return lines.join('\n').trim();
+  }
+
+  function persistAndRender(){
+    render();
+    const state = {
+      date: fDate.value, start: fStart.value, venue: fVenue.value, staff: fStaff.value,
+      blocks: blocks
+    };
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      statusLine.textContent = '保存しました';
+    }catch(e){
+      statusLine.textContent = '保存に失敗しました';
+    }
+    setTimeout(()=>{ statusLine.textContent=''; }, 1500);
+  }
+
+  document.getElementById('addMatch').addEventListener('click', ()=>{
+    blocks.push({id:uid(), type:'match', team1:'', team2:'', firstAttack:'', duration:100, manualStart:null, notes:''});
+    persistAndRender();
+  });
+  document.getElementById('addInterval').addEventListener('click', ()=>{
+    blocks.push({id:uid(), type:'interval', duration:20, manualStart:null});
+    persistAndRender();
+  });
+  [fDate, fStart, fVenue, fStaff].forEach(el=>{
+    el.addEventListener('input', persistAndRender);
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', async ()=>{
+    const text = document.getElementById('lineText').value;
+    const note = document.getElementById('copiedNote');
+    try{
+      await navigator.clipboard.writeText(text);
+      note.textContent = 'コピーしました';
+    }catch(e){
+      note.textContent = 'コピーできませんでした。テキストを選択してコピーしてください。';
+    }
+    setTimeout(()=>{ note.textContent=''; }, 2000);
+  });
+
+  document.getElementById('lineBtn').addEventListener('click', ()=>{
+    const text = document.getElementById('lineText').value;
+    const url = 'https://line.me/R/msg/text/?'+encodeURIComponent(text);
+    window.open(url, '_blank');
+  });
+
+  function init(){
+    let state = null;
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      state = raw ? JSON.parse(raw) : null;
+    }catch(e){ state = null; }
+    if(!state) state = defaultState();
+
+    fDate.value = state.date;
+    fStart.value = state.start;
+    fVenue.value = state.venue;
+    fStaff.value = state.staff;
+    blocks = state.blocks;
+    render();
+  }
+
+  init();
+})();
+
+// ---- PWA: service worker registration ----
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+  });
+}
+
+// ---- PWA: Android install prompt ----
+let deferredPrompt = null;
+const installBanner = document.getElementById('installBanner');
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  installBanner.style.display = 'flex';
+});
+
+installBtn.addEventListener('click', async ()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  installBanner.style.display = 'none';
+});
+
+window.addEventListener('appinstalled', ()=>{
+  installBanner.style.display = 'none';
+});
+
+// iOS Safari has no beforeinstallprompt — show a manual hint instead
+(function(){
+  const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+  const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator.standalone);
+  if(isIos && !isInStandaloneMode){
+    installBanner.style.display = 'flex';
+    installBanner.querySelector('span').textContent = '共有ボタン → 「ホーム画面に追加」でアプリ化できます。';
+    installBtn.style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>

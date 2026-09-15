@@ -1,0 +1,32 @@
+{
+  "name": "試合タイムスケジュール",
+  "short_name": "試合ｽｹｼﾞｭｰﾙ",
+  "description": "試合の開始・終了時刻を自動計算し、LINE送信用のテキストを作成するアプリ",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F1EC",
+  "theme_color": "#2E5D54",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
