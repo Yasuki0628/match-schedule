@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="試合ｽｹｼﾞｭｰﾙ">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#F3F1EC;
@@ -35,7 +35,7 @@
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{height:100%;}
   body{
-    margin:0;font-family:'Zen Kaku Gothic New', sans-serif;
+    margin:0;font-family:'Noto Sans JP', sans-serif;
     background:var(--paper);color:var(--ink);min-height:100vh;
     padding:calc(24px + env(safe-area-inset-top)) 14px calc(60px + env(safe-area-inset-bottom));
   }
@@ -140,6 +140,7 @@
 
   <div class="card">
     <h2>大会情報</h2>
+    <div class="field"><label for="fTournament">大会名</label><input type="text" id="fTournament" placeholder="例: 第10回 春季トーナメント"></div>
     <div class="grid2">
       <div class="field"><label for="fDate">日付</label><input type="date" id="fDate"></div>
       <div class="field"><label for="fStart">1試合目 開始時刻</label><input type="time" id="fStart"></div>
@@ -180,6 +181,7 @@
 <script>
 (function(){
   const blockList = document.getElementById('blockList');
+  const fTournament = document.getElementById('fTournament');
   const fDate = document.getElementById('fDate');
   const fStart = document.getElementById('fStart');
   const fVenue = document.getElementById('fVenue');
@@ -195,7 +197,7 @@
     const today = new Date();
     const ymd = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
     return {
-      date: ymd, start: '08:30', venue: '', staff: '',
+      tournament: '', date: ymd, start: '08:30', venue: '', staff: '',
       blocks: [
         {id:uid(), type:'match', team1:'', team2:'', firstAttack:'', duration:100, manualStart:null, notes:''},
         {id:uid(), type:'interval', duration:20, manualStart:null},
@@ -394,7 +396,7 @@
     const dateObj = fDate.value ? new Date(fDate.value+'T00:00:00') : null;
     const dateStr = dateObj ? (dateObj.getFullYear()+'年'+(dateObj.getMonth()+1)+'月'+dateObj.getDate()+'日') : '';
     let lines = [];
-    lines.push('【タイムスケジュール】');
+    lines.push(fTournament.value ? '【'+fTournament.value+'】' : '【タイムスケジュール】');
     if(dateStr) lines.push('日付: '+dateStr);
     if(fVenue.value) lines.push('会場: '+fVenue.value);
     if(fStaff.value) lines.push('会場担当: '+fStaff.value);
@@ -419,7 +421,7 @@
 
   function saveState(){
     const state = {
-      date: fDate.value, start: fStart.value, venue: fVenue.value, staff: fStaff.value,
+      tournament: fTournament.value, date: fDate.value, start: fStart.value, venue: fVenue.value, staff: fStaff.value,
       blocks: blocks
     };
     try{
@@ -443,7 +445,7 @@
   });
   // Date / start-time / venue / staff: update computed times in place,
   // don't rebuild the block list (venue/staff typing must not be interrupted).
-  [fDate, fStart, fVenue, fStaff].forEach(el=>{
+  [fTournament, fDate, fStart, fVenue, fStaff].forEach(el=>{
     el.addEventListener('input', ()=>{
       refreshDerived();
       saveState();
@@ -476,6 +478,7 @@
     }catch(e){ state = null; }
     if(!state) state = defaultState();
 
+    fTournament.value = state.tournament || '';
     fDate.value = state.date;
     fStart.value = state.start;
     fVenue.value = state.venue;
