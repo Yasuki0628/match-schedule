@@ -230,6 +230,8 @@
     });
   }
 
+  // Full structural rebuild — only call this for add / delete / reorder,
+  // never while the user is typing in a field (it would steal focus).
   function render(){
     const calced = recalcTimes();
     blockList.innerHTML = '';
@@ -237,6 +239,7 @@
     calced.forEach((b, idx)=>{
       const wrap = document.createElement('div');
       wrap.className = 'block'+(b.type==='interval' ? ' interval':'');
+      wrap.dataset.id = b.id;
 
       const head = document.createElement('div');
       head.className = 'block-head';
@@ -289,7 +292,8 @@
           if(act==='del'){ blocks = blocks.filter(x=>x.id!==b.id); }
           if(act==='up' && idx>0){ [blocks[idx-1], blocks[idx]] = [blocks[idx], blocks[idx-1]]; }
           if(act==='down' && idx<blocks.length-1){ [blocks[idx+1], blocks[idx]] = [blocks[idx], blocks[idx+1]]; }
-          persistAndRender();
+          render();
+          saveState();
         });
       });
       body.querySelectorAll('[data-field]').forEach(el=>{
@@ -303,7 +307,10 @@
           }else{
             orig[field] = el.value;
           }
-          persistAndRender();
+          // Update only computed values (times, summary, export text) —
+          // never rebuild the DOM here, or the field being typed in loses focus.
+          refreshDerived();
+          saveState();
         });
       });
       const resetEl = body.querySelector('[data-act="resetstart"]');
@@ -311,17 +318,70 @@
         resetEl.addEventListener('click', ()=>{
           const orig = blocks.find(x=>x.id===b.id);
           orig.manualStart = null;
-          persistAndRender();
+          render();
+          saveState();
         });
       }
     });
 
+    updateSummaryAndExport(calced);
+  }
+
+  function updateSummaryAndExport(calced){
     const matchBlocks = calced.filter(b=>b.type==='match');
     document.getElementById('sumCount').textContent = matchBlocks.length;
     document.getElementById('sumStart').textContent = calced.length ? minutesToStr(calced[0].computedStart) : '--:--';
     document.getElementById('sumEnd').textContent = calced.length ? minutesToStr(calced[calced.length-1].computedEnd) : '--:--';
-
     document.getElementById('lineText').value = buildLineText(calced);
+  }
+
+  // Lightweight update used while the user is typing: updates computed
+  // start/end times, dropdown labels, and the summary/export text in place,
+  // without touching the input element the user is currently focused on.
+  function refreshDerived(){
+    const calced = recalcTimes();
+    calced.forEach(b=>{
+      const wrap = blockList.querySelector('[data-id="'+b.id+'"]');
+      if(!wrap) return;
+
+      const endDiv = wrap.querySelector('.time-computed');
+      if(endDiv) endDiv.textContent = minutesToStr(b.computedEnd);
+
+      const startInput = wrap.querySelector('[data-field="manualStart"]');
+      if(startInput && document.activeElement !== startInput){
+        startInput.value = minutesToStr(b.computedStart);
+      }
+
+      const existingReset = wrap.querySelector('[data-act="resetstart"]');
+      if(b.manualStart && !existingReset){
+        const link = document.createElement('div');
+        link.className = 'reset-link';
+        link.dataset.act = 'resetstart';
+        link.textContent = '開始時刻を自動計算に戻す';
+        link.addEventListener('click', ()=>{
+          const orig = blocks.find(x=>x.id===b.id);
+          orig.manualStart = null;
+          render();
+          saveState();
+        });
+        const row3 = wrap.querySelector('.row3');
+        if(row3) row3.insertAdjacentElement('afterend', link);
+      }else if(!b.manualStart && existingReset){
+        existingReset.remove();
+      }
+
+      if(b.type==='match'){
+        const sel = wrap.querySelector('[data-field="firstAttack"]');
+        if(sel){
+          const opt1 = sel.querySelector('option[value="team1"]');
+          const opt2 = sel.querySelector('option[value="team2"]');
+          if(opt1) opt1.textContent = b.team1 || 'チームA';
+          if(opt2) opt2.textContent = b.team2 || 'チームB';
+          if(document.activeElement !== sel) sel.value = b.firstAttack || '';
+        }
+      }
+    });
+    updateSummaryAndExport(calced);
   }
 
   function escapeAttr(s){
@@ -357,8 +417,7 @@
     return lines.join('\n').trim();
   }
 
-  function persistAndRender(){
-    render();
+  function saveState(){
     const state = {
       date: fDate.value, start: fStart.value, venue: fVenue.value, staff: fStaff.value,
       blocks: blocks
@@ -374,14 +433,21 @@
 
   document.getElementById('addMatch').addEventListener('click', ()=>{
     blocks.push({id:uid(), type:'match', team1:'', team2:'', firstAttack:'', duration:100, manualStart:null, notes:''});
-    persistAndRender();
+    render();
+    saveState();
   });
   document.getElementById('addInterval').addEventListener('click', ()=>{
     blocks.push({id:uid(), type:'interval', duration:20, manualStart:null});
-    persistAndRender();
+    render();
+    saveState();
   });
+  // Date / start-time / venue / staff: update computed times in place,
+  // don't rebuild the block list (venue/staff typing must not be interrupted).
   [fDate, fStart, fVenue, fStaff].forEach(el=>{
-    el.addEventListener('input', persistAndRender);
+    el.addEventListener('input', ()=>{
+      refreshDerived();
+      saveState();
+    });
   });
 
   document.getElementById('copyBtn').addEventListener('click', async ()=>{
